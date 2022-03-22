@@ -1,8 +1,8 @@
-import { Avatar, List, ListItem, ListItemAvatar, ListItemText, Typography } from '@mui/material';
+import { Avatar, Button, Divider, Link, List, ListItem, ListItemAvatar, ListItemText, Typography } from '@mui/material';
 import Cookies from './cookies';
 import React from 'react';
 import VerifiedIcon from '@mui/icons-material/Verified';
-import { CollectionsOutlined } from '@mui/icons-material';
+import { TurnRightSharp } from '@mui/icons-material';
 
 const url = new URL('https://api.twitter.com/2/tweets/search/recent');
 url.searchParams.append('query', 'url:"https://open.spotify.com/track" -is:quote -is:retweet');
@@ -10,60 +10,116 @@ url.searchParams.append('tweet.fields', 'entities');
 url.searchParams.append('expansions', 'author_id');
 url.searchParams.append('user.fields', 'verified');
 
-const spotifyUrlLookup = (urls) => urls?.find(url => typeof url.unwound_url !== 'undefined' && url.unwound_url.startsWith('https://open.spotify.com/track'));
+const spotifyUrlLookup = (tweet) => {
+  if (tweet.entities && tweet.entities.urls) {
+    return tweet.entities.urls.find(url => url.expanded_url && url.expanded_url.startsWith('https://open.spotify.com/track')) ?? null;
+  }
+
+  return null;
+}
 
 export default class TrackList extends React.Component {
-  state = {tweets: null}
+  state = {tweets: null, error: null}
   constructor(props) {
     super(props);
     this.token = Cookies.get(`${this.props.service}_token`);
   }
 
+  retry() {
+    this.setState({error: null});
+  }
+
   async componentDidMount() {
-    const response = await fetch('/request', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        url: url.toString(),
-        method: 'GET'
-      })
-    });
-    
-    const json = await response.json();
-    
-    const ids = json.response.data.map(tweet => {
+    await this.loadData();
+  }
+
+  async loadData() {
+    let tweets;
+    if (!this.props.tweets) {
       try {
-        const {unwound_url} = spotifyUrlLookup(tweet.entities.urls);
-        const url = new URL(unwound_url);
-        return url.pathname.split('/').pop();  
+        const response = await fetch('/request', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-type': 'application/json'
+          },
+          body: JSON.stringify({
+            url: url.toString(),
+            method: 'GET'
+          })
+        });
+        
+        const json = await response.json();
+        tweets = json.response.data.map(tweet => {
+          try {
+            const {unwound_url} = spotifyUrlLookup(tweet.entities?.urls);
+            const url = new URL(unwound_url);
+            return tweet;
+          } catch (e) {
+            return null;
+          }
+        }).filter(id => id !== null);
+
+        json.response.data = tweets;
+    
+        if (this.props.onTweetsReceive) {
+          this.props.onTweetsReceive(json.response);
+        }
       } catch (e) {
-        return null;
+        if (this.props.onError) {
+          this.props.onError(e);
+        }  
       }
+    } else {
+      tweets = this.props.tweets;
+      const data = tweets.data.map(tweet => spotifyUrlLookup(tweet) ? tweet : null).filter(tweet => tweet !== null);
+      tweets.data = data;
+    }
+
+    const ids = tweets.data.map(tweet => {
+      const {expanded_url} = spotifyUrlLookup(tweet);
+      
+      if (expanded_url) {
+        const url = new URL(expanded_url);
+        return url.pathname.split('/').pop();
+      }
+
+      return null;
     }).filter(id => id !== null);
 
-    const tracksURL = new URL('https://api.spotify.com/v1/tracks');
-    const spotifyToken = Cookies.get('spotify_token').access_token;
-    tracksURL.searchParams.append('ids', ids.join(','));
-    const tracksRequest = await fetch(tracksURL.toString(), {
-      headers: {
-        'Authorization': `Bearer ${spotifyToken}` 
+    try {
+      const tracksURL = new URL('https://api.spotify.com/v1/tracks');
+      const spotifyToken = Cookies.get('spotify_token').access_token;
+      tracksURL.searchParams.append('ids', ids.join(','));
+      const tracksRequest = await fetch(tracksURL.toString(), {
+        headers: {
+          'Authorization': `Bearer ${spotifyToken}` 
+        }
+      });
+      
+      const { tracks } = await tracksRequest.json();
+  
+      if (this.props.onTracksReceive) {
+        this.props.onTracksReceive(tracks);
       }
-    });
+      
+      this.setState({tracks, tweets: tweets});
+    } catch (e) {
+      console.error(e);
+      if (this.props.onError) {
+        this.props.onError(e);
+      }
 
-    const { tracks } = await tracksRequest.json();
-
-    if (this.props.onTracksReceive) {
-      this.props.onTracksReceive(tracks);
+      this.setState({error: e});
     }
-    
-    this.setState({tracks, tweets: json.response});
+
+
+
   }
 
   renderListItems() {
-    const tweetFromTrackId = (trackId) => this.state.tweets.data.find(tweet => tweet.entities.urls.find(({unwound_url}) => unwound_url?.includes(trackId)));
+    const tweetFromTrackId = (trackId) => this.state.tweets.data.find(tweet => 
+      tweet.entities.urls.find(({expanded_url}) => expanded_url?.includes(trackId)));
     const userLookup = (userId, response) => response.includes.users.find(user => user.id === userId);
 
     return this.state.tracks.map(track => {
@@ -71,14 +127,14 @@ export default class TrackList extends React.Component {
       const { username, verified } = userLookup(tweet.author_id, this.state.tweets);
       const artist = track.artists.map(({name}) => name).join(', ');
       const artwork = track.album.images[0].url;
-      return <ListItem key={tweet.id} alignItems='flex-start'>
+      return <React.Fragment key={tweet.id}><ListItem alignItems='flex-start'>
         <ListItemAvatar>
           <Avatar 
             alt={track.name + ' • ' + artist}
             src={artwork} />
         </ListItemAvatar>
         <ListItemText
-          primary={track.name}
+          primary={<Link target="_blank" color="inherit" underline="hover" href={track.external_urls.spotify}>{track.name}</Link>}
           secondary={
             <React.Fragment>
               <Typography
@@ -89,18 +145,26 @@ export default class TrackList extends React.Component {
               >
                 {artist}
               </Typography>
-              {'From @' + username}
+              <Link target="_blank" underline="hover" href={`https://twitter.com/${username}/status/${tweet.id}`}>{'Tweeted by @' + username}</Link>
               {verified ? <VerifiedIcon /> : <></>}
             </React.Fragment>
           }
         />
-      </ListItem>
+      </ListItem><Divider /></React.Fragment>;
     }).filter(el => el !== null);
   }
 
   render() {
+    if (this.state.error) {
+      return <>
+        <h2>Ooops.</h2>
+        <h3>Something went wrong.</h3>
+        <Button onClick={() => this.retry()}>Retry</Button>
+      </>;
+    }
+
     return this.state.tweets ? 
-      <List sx={{ margin: '0 auto', width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
+      <List sx={{ margin: '0 auto', width: '100%', maxWidth: 480, bgcolor: 'background.paper' }}>
         {this.renderListItems()}
       </List> :
       <></>;    

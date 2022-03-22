@@ -34,7 +34,7 @@ export default class TrackList extends React.Component {
   }
 
   async loadData() {
-    let tweets;
+    let tweets = {};
     if (!this.props.tweets) {
       try {
         const response = await fetch('/request', {
@@ -50,22 +50,15 @@ export default class TrackList extends React.Component {
         });
         
         const json = await response.json();
-        tweets = json.response.data.map(tweet => {
-          try {
-            const {unwound_url} = spotifyUrlLookup(tweet.entities?.urls);
-            const url = new URL(unwound_url);
-            return tweet;
-          } catch (e) {
-            return null;
-          }
-        }).filter(id => id !== null);
-
-        json.response.data = tweets;
+        tweets = json.response;
+        const data = json.response.data.map(tweet => spotifyUrlLookup(tweet) ? tweet : null).filter(tweet => tweet !== null);
+        tweets.data = data;
     
         if (this.props.onTweetsReceive) {
-          this.props.onTweetsReceive(json.response);
+          this.props.onTweetsReceive(tweets);
         }
       } catch (e) {
+        console.warn(e);
         if (this.props.onError) {
           this.props.onError(e);
         }  

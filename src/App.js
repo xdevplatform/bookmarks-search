@@ -49,20 +49,13 @@ export default class App extends React.Component {
     validSpotifyToken: hasValidToken('spotify'),
     validTwitterToken: hasValidToken('twitter'),
   };
-  // steps = {
-  //   'intro': {next: '0'},
-  //   '0': {next: '1'},
-  //   '1': {next: '2'},
-  //   '2': {next: '3'},
-  //   '3': {next: '4'},
-  // };
-
+  
   didReceiveTracks(tracks) {
     this.setState({tracks});
   }
 
   didReceiveBookmarkableTweets(tweets) {
-    this.state.bookmarkableTweets = tweets;
+    this.setState({bookmarkableTweets: tweets});
   }
 
   async stepToTrackSelection() {
@@ -93,15 +86,15 @@ export default class App extends React.Component {
       const myUser = await request('https://api.twitter.com/2/users/me');
       const myUserResponse = await myUser.json();
       const { id } = myUserResponse.response.data;
-      this.state.bookmarkableTweets.map(async (tweet) => {
+      this.state.bookmarkableTweets.data.map(async (tweet) => {
         const bookmarksAdd = await request(`https://api.twitter.com/2/users/${id}/bookmarks`, 'POST', {
           tweet_id: tweet.id
         });  
       });
 
-      this.setState({bookmarksButtonLoading: false, snackbarOpen: true});
+      this.setState({bookmarksButtonLoading: false, snackbarOpen: true, step: 'addTracksFromBookmarks'});
     } catch (e) {
-      console.log(e);
+      console.error(e);
       this.setState({bookmarksButtonLoading: false, trackListError: true});
     }
   }
@@ -111,6 +104,10 @@ export default class App extends React.Component {
       const url = new URL(window.location.href);
       const service = url.searchParams.get('service');
       const success = url.searchParams.get('success');
+
+      if (success || service) {
+        window.history.pushState({}, '', '/');
+      }
 
       if (success === '1') {
         switch (service) {

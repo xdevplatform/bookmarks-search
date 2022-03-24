@@ -6,8 +6,8 @@ import TrackList from './TrackList';
 import Cookies from './cookies'; 
 import Step from './Step';
 import LoadingButton from '@mui/lab/LoadingButton';
-import { Alert, Button, CssBaseline, Link, Snackbar } from '@mui/material';
-
+import { Alert, Button, Link, Snackbar } from '@mui/material';
+console.log(process.env)
 const request = async (url, method = 'GET', body = '') => {
   return await fetch('/request', {
     method: 'POST',
@@ -158,12 +158,12 @@ export default class App extends React.Component {
       <Step step="spotify" currentStep={this.state.step}>
         <h1>Authorize Spotify so I can get track info and create a playlists.</h1>
         <h3>You will create a playlist, but only if you want to.</h3>
-        <SignInButton onSuccess={() => this.setState({step: 'twitter'})} href="https://127.0.0.1:5000/authorize/spotify" service="spotify">Authorize Spotify</SignInButton>
+        <SignInButton onSuccess={() => this.setState({step: 'twitter'})} href={`${process.env.REACT_APP_BACKEND_URL ?? ''}/authorize/spotify`} service="spotify">Authorize Spotify</SignInButton>
       </Step>
       <Step step="twitter" currentStep={this.state.step}>
         <h1>Authorize Twitter so can I check if there is music in your Bookmarks.</h1>
         <h3>This app will never Tweet on your behalf. It will only search for music and create Bookmarks, but only with your explicit consent.</h3>
-        <SignInButton onSuccess={() => this.setState({})} href="https://127.0.0.1:5000/authorize/twitter" service="twitter">Authorize Twitter</SignInButton>
+        <SignInButton onSuccess={() => this.stepToTrackSelection()} href={`${process.env.REACT_APP_BACKEND_URL ?? ''}/authorize/twitter`} service="twitter">Authorize Twitter</SignInButton>
       </Step>
       <Step step="addTracksFromSearch" currentStep={this.state.step}>
         { this.state.trackListError ? <></> : <>

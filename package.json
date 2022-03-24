@@ -2,7 +2,11 @@
   "name": "spotify",
   "version": "0.1.0",
   "private": true,
-  "proxy": "https://127.0.0.1:5000",
+  "main": "server.js",
+  "proxy": "https://127.0.0.1:3002",
+  "engines": {
+    "node": "14.x"
+  },
   "dependencies": {
     "@emotion/react": "^11.8.2",
     "@emotion/styled": "^11.8.1",
@@ -13,16 +17,31 @@
     "@testing-library/react": "^12.1.4",
     "@testing-library/user-event": "^13.5.0",
     "add": "^2.0.6",
+    "cookie-parser": "^1.4.5",
+    "dotenv": "^10.0.0",
+    "dotenv-webpack": "^7.1.0",
+    "express": "^4.17.1",
+    "express-handlebars": "^5.3.2",
+    "http-proxy-middleware": "^2.0.4",
+    "node-fetch": "^2.6.1",
     "react": "^17.0.2",
+    "react-app-rewired": "^2.2.1",
     "react-dom": "^17.0.2",
     "react-scripts": "5.0.0",
+    "simple-git": "^3.2.6",
     "web-vitals": "^2.1.4",
     "yarn": "^1.22.18"
   },
+  "devDependencies": {
+    "cors": "^2.8.5",
+    "nodemon": "^2.0.15"
+  },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
+    "start": "node server.js",
+    "dev": "nodemon server.js & react-app-rewired start && kill $!",
+    "frontend": "react-app-rewired start",
+    "build": "react-app-rewired build",
+    "test": "react-app-rewired test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

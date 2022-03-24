@@ -7,7 +7,7 @@ import Cookies from './cookies';
 import Step from './Step';
 import LoadingButton from '@mui/lab/LoadingButton';
 import { Alert, Button, Link, Snackbar } from '@mui/material';
-console.log(process.env)
+
 const request = async (url, method = 'GET', body = '') => {
   return await fetch('/request', {
     method: 'POST',

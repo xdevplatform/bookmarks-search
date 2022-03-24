@@ -155,7 +155,7 @@ export default class App extends React.Component {
         <h1>My Twitter Jam helps you create a playlist from your Twitter Bookmarks.</h1>
         <Button variant='contained' size='large' onClick={() => this.stepPastIntro()}>Get started</Button>
         <div style={{marginTop: 5 + 'rem'}}>
-          <p>Made with 💙 by the <Link target='_blank' href="https://twitter.com/TwitterDev">@Twitterdev</Link> team.</p>
+          <p>Made with 💙 by the <Link target='_blank' href="https://twitter.com/TwitterDev">@TwitterDev</Link> team.</p>
           <p>Check out the <Link target='_blank' href="https://github.com/twitterdev/mytwitterjam">Source code on Github</Link> or <Link target='_blank' href="https://glitch.com/edit/#!/remix/mytwitterjam">Remix this app</Link></p>
         </div>
       </Step>

@@ -123,6 +123,7 @@ export default class TrackList extends React.Component {
       return <React.Fragment key={tweet.id}><ListItem alignItems='flex-start'>
         <ListItemAvatar>
           <Avatar 
+            variant='square'
             alt={track.name + ' • ' + artist}
             src={artwork} />
         </ListItemAvatar>
@@ -157,7 +158,7 @@ export default class TrackList extends React.Component {
     }
 
     return this.state.tweets ? 
-      <List sx={{ margin: '0 auto', width: '100%', maxWidth: 480, bgcolor: 'background.paper' }}>
+      <List sx={{ margin: '0 auto', maxWidth: 480, bgcolor: 'background.paper' }}>
         {this.renderListItems()}
       </List> :
       <></>;    

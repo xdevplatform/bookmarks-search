@@ -6,7 +6,7 @@ import TrackList from './TrackList';
 import Cookies from './cookies'; 
 import Step from './Step';
 import LoadingButton from '@mui/lab/LoadingButton';
-import { Alert, Button, Link, Snackbar } from '@mui/material';
+import { Alert, Button, CssBaseline, Link, Snackbar } from '@mui/material';
 
 const request = async (url, method = 'GET', body = '') => {
   return await fetch('/request', {
@@ -41,6 +41,7 @@ const hasValidToken = (service) => {
 
 export default class App extends React.Component {
   state = {
+    stepBeforeError: null,
     tracks: {}, 
     step: 'start', 
     trackListError: false, 
@@ -59,24 +60,29 @@ export default class App extends React.Component {
   }
 
   async stepToTrackSelection() {
-    const myUser = await request('https://api.twitter.com/2/users/me');
-    const myUserResponse = await myUser.json();
-    const { id } = myUserResponse.response.data;
-
-    const myBookmarksURL = new URL(`https://api.twitter.com/2/users/${id}/bookmarks`);
-    myBookmarksURL.searchParams.append('tweet.fields', 'entities');
-    myBookmarksURL.searchParams.append('expansions', 'author_id');
-    myBookmarksURL.searchParams.append('user.fields', 'verified');
-
-    const myBookmarks = await request(myBookmarksURL);
-    const myBookmarksResponse = await myBookmarks.json();
-
-    const spotifyUrlLookup = (urls) => urls?.find(url => typeof url?.unwound_url !== 'undefined' && url.unwound_url.startsWith('https://open.spotify.com/track'));
-    
-    if (myBookmarksResponse.response.data.find(tweet => spotifyUrlLookup(tweet.entities?.urls))) {
-      this.setState({step: 'addTracksFromBookmarks', bookmarkableTweets: myBookmarksResponse.response});
-    } else {
-      this.setState({step: 'addTracksFromSearch'});
+    try {
+      const myUser = await request('https://api.twitter.com/2/users/me');
+      const myUserResponse = await myUser.json();
+      const { id } = myUserResponse.response.data;
+  
+      const myBookmarksURL = new URL(`https://api.twitter.com/2/users/${id}/bookmarks`);
+      myBookmarksURL.searchParams.append('tweet.fields', 'entities');
+      myBookmarksURL.searchParams.append('expansions', 'author_id');
+      myBookmarksURL.searchParams.append('user.fields', 'verified');
+  
+      const myBookmarks = await request(myBookmarksURL);
+      const myBookmarksResponse = await myBookmarks.json();
+  
+      const spotifyUrlLookup = (urls) => urls?.find(url => typeof url?.unwound_url !== 'undefined' && url.unwound_url.startsWith('https://open.spotify.com/track'));
+      
+      if (myBookmarksResponse.response.data.find(tweet => spotifyUrlLookup(tweet.entities?.urls))) {
+        this.setState({step: 'addTracksFromBookmarks', bookmarkableTweets: myBookmarksResponse.response});
+      } else {
+        this.setState({step: 'addTracksFromSearch'});
+      }  
+    } catch (e) {
+      console.error(e);
+      this.setState({stepBeforeError: this.state.step, step: 'error'});
     }
   }
 
@@ -145,7 +151,7 @@ export default class App extends React.Component {
   render() {
     return <>
       <Step step="start" currentStep={this.state.step}>
-        <h1>People on Twitter bookmark millions of Spotify tracks every month.</h1>
+        <h1>People on Twitter bookmark millions of Spotify tracks.</h1>
         <h1>My Twitter Jam helps you create a playlist from your Twitter Bookmarks.</h1>
         <Button variant='contained' size='large' onClick={() => this.stepPastIntro()}>Get started</Button>
       </Step>
@@ -177,7 +183,16 @@ export default class App extends React.Component {
       <Step step="end" currentStep={this.state.step}>
         <h1>Success! You created your Twitter Jam.</h1>
         <h1><Link href={this.state.playlist?.external_urls.spotify} underline="hover">Check it out.</Link></h1>
+        <div style={{marginTop: 5 + 'rem'}}>
+          <h2>Want to create your own app like this?</h2>
+          <h2><Link underline="hover" href='https://t.co/signup'>Sign up for the Twitter API</Link> (it's free!) and <Link underline="hover" href='https://github.com/twitterdev/mytwitterjam'>clone this project.</Link></h2>
+        </div>
       </Step>
-    </>;
+      <Step step="error" currentStep={this.state.step}>
+        <h1>Mic drop. 👊🎤</h1>
+        <h2>Something went wrong while talking to the internet.</h2>
+        <Button variant='outlined' onClick={() => this.setState({step: this.state.stepBeforeError, stepBeforeError: null})}>Retry</Button>
+      </Step>
+      </>;
   }
 }

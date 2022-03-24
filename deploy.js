@@ -25,24 +25,19 @@ const npm = env.npm_execpath.match('yarn') ? 'yarn' : 'npm run';
 
 const printUsage = () => {
   const command = env.npm_execpath.match('yarn') ? `${npm} deploy` : `${npm} run deploy`;
-  console.error(`usage: ${command} path-to-frontend git-remote`);  
+  console.error(`usage: ${command} git-remote`);  
 }
 
 const run = async () => {
 
   const git = simpleGit();
-  const [,, path, remote] = argv;
+  const [,, remote] = argv;
 
-  if (!path || !remote) {
+  if (!remote) {
     printUsage();
     exit(ErrorCode.MISSING_PARAMETERS);
   }
   
-  if (!existsSync(path)) {
-    console.error('❌ path not found:', path);
-    exit(ErrorCode.PATH_NOT_FOUND);
-  }
-
   if (remote.toLowerCase() === 'origin') {
     console.error('❌ cannot deploy to origin');
     exit(ErrorCode.CANNOT_DEPLOY_TO_ORIGIN);
@@ -66,17 +61,11 @@ const run = async () => {
   }
 
   try {
-    // 1. build (cd path; yarn build)
+    // 1. build (yarn build)
     console.error('Generating build…');
-    chdir(path);
     execSync(`${npm} build`);
-
-    // 2. copy (cd; cp -a)
-    chdir(currentDir);
-    execSync(`cp -a ${path}/build ${currentDir}`);
   } catch(e) {
     console.error(e);
-    chdir(currentDir);
     exit(ErrorCode.EXEC_FAILED);
   }
 
@@ -91,7 +80,6 @@ const run = async () => {
     await git.push([remote, `${branchName}:master`, '--force']);
     await git.checkout('main');
     await git.deleteLocalBranch(branchName, true);
-    chdir(currentDir);
     console.error('✅ Done');
     exit();
   

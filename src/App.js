@@ -1,12 +1,12 @@
 import './App.css';
 import React from 'react';
-import SignInButton from './SignInButton';
-import PlaylistAdd from './PlaylistAdd';
-import TrackList from './TrackList';
 import Cookies from './cookies'; 
-import Step from './Step';
-import LoadingButton from '@mui/lab/LoadingButton';
-import { Alert, Button, Link, Snackbar } from '@mui/material';
+import { styled, alpha, Button, Container, List, ListItem, Snackbar, Stack, Typography } from '@mui/material';
+import InputBase from '@mui/material/InputBase';
+import SearchIcon from '@mui/icons-material/Search';
+import Loading from './Loading';
+import Tweet from './Tweet';
+import { userLookup } from './utils';
 
 const request = async (url, method = 'GET', body = '') => {
   return await fetch('/request', {
@@ -23,9 +23,80 @@ const request = async (url, method = 'GET', body = '') => {
   });
 }
 
-const hasValidToken = (service) => {
-  const tokenKey = `${service}_token`;
-  const token = Cookies.get(tokenKey);
+const paginatedRequest = async (url, method = 'GET', body = '') => {
+  let out = {data: [], includes: {users: []}, meta: {}};
+  let i = 0;
+  do {
+    i++;
+
+    if (i > 5) {
+      break;
+    }
+
+    if (out.meta.next_token) {
+      url.searchParams.set('paginationToken', out.response?.meta.next_token);
+    }
+
+    const response = await request(url, method, body);
+    const json = await response.json();
+
+    if (!(response.ok && json.response.data)) {
+      break;
+    }
+
+    out.data = [...out.data, ...json.response.data];
+    out.includes.users = [...out.includes.users, ...json.response.includes?.users ?? []];
+    out.meta = json.response.meta ?? out.meta;
+
+    if (!json.response.meta) {
+      out.meta.next_token = null;
+    }
+  } while (out.meta.next_token);
+
+  return out;
+}
+
+const Search = styled('div')(({ theme }) => ({
+  position: 'relative',
+  borderRadius: theme.shape.borderRadius,
+  backgroundColor: alpha(theme.palette.common.white, 0.15),
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.common.white, 0.25),
+  },
+  width: '100%',
+  [theme.breakpoints.up('sm')]: {
+    marginLeft: theme.spacing(3),
+    width: 'auto',
+  },
+}));
+
+const SearchIconWrapper = styled('div')(({ theme }) => ({
+  padding: theme.spacing(0, 2),
+  height: '100%',
+  position: 'absolute',
+  pointerEvents: 'none',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+}));
+
+const StyledInputBase = styled(InputBase)(({ theme }) => ({
+  color: 'inherit',
+  '& .MuiInputBase-input': {
+    padding: theme.spacing(1, 1, 1, 0),
+    // vertical padding + font size from searchIcon
+    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
+    transition: theme.transitions.create('width'),
+    width: '100%',
+    [theme.breakpoints.up('md')]: {
+      width: '20ch',
+    },
+  },
+}));
+
+
+const hasValidToken = () => {
+  const token = Cookies.get('twitter_token');
   if (!token) {
     return false;
   }
@@ -38,165 +109,124 @@ const hasValidToken = (service) => {
   return true;
 }
 
-
 export default class App extends React.Component {
   state = {
-    stepBeforeError: null,
-    tracks: {}, 
-    step: 'start', 
-    trackListError: false, 
-    bookmarksButtonLoading: false, 
-    snackbarOpen: false,
-    validSpotifyToken: hasValidToken('spotify'),
-    validTwitterToken: hasValidToken('twitter'),
+    error: false,
+    loading: true,
+    tweets: {data: [], includes: [], meta: {}},
+    results: {data: [], includes: [], meta: {}},
   };
-  
-  didReceiveTracks(tracks) {
-    this.setState({tracks});
+
+  constructor(props) {
+    super(props);
+    this.searchRef = React.createRef();
   }
 
-  didReceiveBookmarkableTweets(tweets) {
-    this.setState({bookmarkableTweets: tweets});
-  }
-
-  async stepToTrackSelection() {
+  async componentDidMount() {    
     try {
       const myUser = await request('https://api.twitter.com/2/users/me');
       const myUserResponse = await myUser.json();
       const { id } = myUserResponse.response.data;
   
       const myBookmarksURL = new URL(`https://api.twitter.com/2/users/${id}/bookmarks`);
-      myBookmarksURL.searchParams.append('tweet.fields', 'entities');
+      myBookmarksURL.searchParams.append('tweet.fields', 'context_annotations,created_at');
       myBookmarksURL.searchParams.append('expansions', 'author_id');
-      myBookmarksURL.searchParams.append('user.fields', 'verified');
+      myBookmarksURL.searchParams.append('user.fields', 'verified,profile_image_url');
   
-      const myBookmarks = await request(myBookmarksURL);
-      const myBookmarksResponse = await myBookmarks.json();
-  
-      const spotifyUrlLookup = (urls) => urls?.find(url => typeof url?.unwound_url !== 'undefined' && url.unwound_url.startsWith('https://open.spotify.com/track'));
+      const myBookmarks = await paginatedRequest(myBookmarksURL);
+      this.setState({loading: false, tweets: myBookmarks, results: myBookmarks});
+      this.searchRef.current.querySelector('input').focus()
+    } catch (e) {
+      console.error(e);
+      this.setState({error: true, loading: false});
+    }
+  }
+
+  async retry() {
+    this.setState({error: false});
+    await this.request();
+  }
+
+  search(e) {
+    if (!e.target.value) {
+      this.setState({results: this.state.tweets});
+      return;
+    }
+
+    const value = e.target.value.toLowerCase();
+
+    const results = this.state.tweets.data.filter(tweet => {
+      const annotations = tweet.context_annotations?.map(({entity}) => entity.name) ?? [];
+      const user = userLookup(tweet.author_id, this.state.tweets);
+      const result = [
+        tweet.text, 
+        user.name, 
+        user.username,
+        ...annotations
+      ].find(token => token.toLowerCase().match(value));
       
-      if (myBookmarksResponse.response.data.find(tweet => spotifyUrlLookup(tweet.entities?.urls))) {
-        this.setState({step: 'addTracksFromBookmarks', bookmarkableTweets: myBookmarksResponse.response});
-      } else {
-        this.setState({step: 'addTracksFromSearch'});
-      }  
-    } catch (e) {
-      console.error(e);
-      this.setState({stepBeforeError: this.state.step, step: 'error'});
-    }
-  }
-
-  async addTweetsToBookmarks() {
-    this.setState({bookmarksButtonLoading: true});
-    try {
-      const myUser = await request('https://api.twitter.com/2/users/me');
-      const myUserResponse = await myUser.json();
-      const { id } = myUserResponse.response.data;
-      this.state.bookmarkableTweets.data.map(async (tweet) => {
-        const bookmarksAdd = await request(`https://api.twitter.com/2/users/${id}/bookmarks`, 'POST', {
-          tweet_id: tweet.id
-        });  
-      });
-
-      this.setState({bookmarksButtonLoading: false, snackbarOpen: true, step: 'addTracksFromBookmarks'});
-    } catch (e) {
-      console.error(e);
-      this.setState({bookmarksButtonLoading: false, trackListError: true});
-    }
-  }
-
-  async componentDidMount() {
-    if (this.state.step === 'start') {
-      const url = new URL(window.location.href);
-      const service = url.searchParams.get('service');
-      const success = url.searchParams.get('success');
-
-      if (success || service) {
-        window.history.pushState({}, '', '/');
+      if (result) {
+        return tweet;
       }
+    });
 
-      if (success === '1') {
-        switch (service) {
-          case 'spotify':
-            if (this.state.validTwitterToken) {
-              return await this.stepToTrackSelection();
-            } else {
-              return await this.setState({step: 'twitter'});
-            }
-
-          case 'twitter':
-            return await this.stepToTrackSelection();
-        }
-      } else if (success === '0') {
-        switch (service) {
-          case 'spotify':
-            return this.setState({step: 'spotify'});
-          case 'twitter':
-            return this.setState({step: 'twitter'});
-        }
-      }
-    }
-  }
-
-  async stepPastIntro() {
-    if (!this.state.validSpotifyToken) {
-      return this.setState({step: 'spotify'});
-    } else if (!this.state.validTwitterToken) {
-      return this.setState({step: 'twitter'});
-    } else {
-      return await this.stepToTrackSelection();
-    }
+    this.setState({results: {data: results, includes: this.state.tweets.includes, meta: this.state.tweets.meta}});
   }
 
   render() {
-    return <>
-      <Step step="start" currentStep={this.state.step}>
-        <h1>People on Twitter bookmark millions of Spotify tracks.</h1>
-        <h1>My Twitter Jam helps you create a playlist from your Twitter Bookmarks.</h1>
-        <Button variant='contained' size='large' onClick={() => this.stepPastIntro()}>Get started</Button>
-        <div style={{marginTop: 5 + 'rem'}}>
-          <p>Made with 💙 by the <Link target='_blank' href="https://twitter.com/TwitterDev">@TwitterDev</Link> team.</p>
-          <p>Check out the <Link target='_blank' href="https://github.com/twitterdev/mytwitterjam">Source code on Github</Link> or <Link target='_blank' href="https://glitch.com/edit/#!/remix/mytwitterjam">Remix this app</Link></p>
-        </div>
-      </Step>
-      <Step step="spotify" currentStep={this.state.step}>
-        <h1>Authorize Spotify so I can get track info and create a playlists.</h1>
-        <h3>You will create a playlist, but only if you want to.</h3>
-        <SignInButton onSuccess={() => this.setState({step: 'twitter'})} href={`${process.env.REACT_APP_BACKEND_URL ?? ''}/authorize/spotify`} service="spotify">Authorize Spotify</SignInButton>
-      </Step>
-      <Step step="twitter" currentStep={this.state.step}>
-        <h1>Authorize Twitter so can I check if there is music in your Bookmarks.</h1>
-        <h3>This app will never Tweet on your behalf. It will only search for music and create Bookmarks, but only with your explicit consent.</h3>
-        <SignInButton onSuccess={() => this.stepToTrackSelection()} href={`${process.env.REACT_APP_BACKEND_URL ?? ''}/authorize/twitter`} service="twitter">Authorize Twitter</SignInButton>
-      </Step>
-      <Step step="addTracksFromSearch" currentStep={this.state.step}>
-        { this.state.trackListError ? <></> : <>
-        <h1>Looks like you don't have Spotify tracks in your Bookmarks.</h1>
-        <h1>Don't worry, let's add some. Here's some suggestions:</h1>
-        </>}
-        <TrackList onError={() => this.setState({trackListError: true})} onTweetsReceive={(tweets) => this.didReceiveBookmarkableTweets(tweets)}></TrackList>
-        <LoadingButton loading={this.state.bookmarksButtonLoading} onClick={() => this.addTweetsToBookmarks()} variant='contained'>{this.state.trackListError ? 'Retry' : 'Add to your Twitter Bookmarks'}</LoadingButton>
-        <Snackbar open={this.state.snackbarOpen} autoHideDuration={5000} onClose={() => this.setState({snackbarOpen: false})}><Alert severity="success" sx={{width: '100%'}}>Nice! These songs are now in your Twitter Bookmarks.</Alert></Snackbar>
-      </Step>
-      <Step step="addTracksFromBookmarks" currentStep={this.state.step}>
-        <h1>I found some good tracks in your Bookmarks.</h1>
-        <h1>Add them to a Spotify playlist.</h1>
-        <TrackList onTracksReceive={(tracks) => this.didReceiveTracks(tracks)} tweets={this.state.bookmarkableTweets}></TrackList>
-        {this.state.tracks ? <PlaylistAdd onComplete={(playlist) => this.setState({step: 'end', playlist: playlist})} tracks={this.state.tracks}></PlaylistAdd> : <></>}
-      </Step>
-      <Step step="end" currentStep={this.state.step}>
-        <h1>Success! You created your Twitter Jam.</h1>
-        <h1><Link href={this.state.playlist?.external_urls.spotify} underline="hover">Check it out.</Link></h1>
-        <div style={{marginTop: 5 + 'rem'}}>
-          <h2>Want to create your own app like this?</h2>
-          <h2><Link underline="hover" href='https://t.co/signup'>Sign up for the Twitter API</Link> (it's free!) and <Link underline="hover" href='https://github.com/twitterdev/mytwitterjam'>clone this project.</Link></h2>
-        </div>
-      </Step>
-      <Step step="error" currentStep={this.state.step}>
-        <h1>Mic drop. 👊🎤</h1>
-        <h2>Something went wrong while talking to the internet.</h2>
-        <Button variant='outlined' onClick={() => this.setState({step: this.state.stepBeforeError, stepBeforeError: null})}>Retry</Button>
-      </Step>
-      </>;
+    if (!hasValidToken()) {
+      return <Stack
+        direction="column"
+        justifyContent="center"
+        alignItems="center"
+        spacing={2}>
+          <Container maxWidth='sm'>
+            <Typography variant='h5'>Authorize Twitter so can I read your Bookmarks.</Typography>
+            <Typography variant='p'>This app only be able to read your bookmarks. It will never Tweet on your behalf.</Typography>
+          </Container>
+          <Button variant="contained" href={`${process.env.REACT_APP_BACKEND_URL ?? ''}/authorize/twitter`} service="twitter">Authorize Twitter</Button>
+      </Stack>;
+    }
+
+    if (this.state.loading) {
+      return <List
+        height={400}
+        width={600}>
+        <Loading />
+      </List>
+    }
+
+    return <Container maxWidth='sm'>
+      <Snackbar 
+        open={this.state.error} 
+        message='Cannot read your bookmarks.'
+        action={
+          <Button color='inherit' size='small' onClick={async () => await this.retry()}>
+            Retry
+          </Button>
+        }>
+      </Snackbar>
+
+      <Search>
+        <SearchIconWrapper>
+          <SearchIcon />
+        </SearchIconWrapper>
+        <StyledInputBase
+          ref={this.searchRef}
+          onChange={(e) => this.search(e)}
+          placeholder="Search your bookmarks"
+          inputProps={{ 'aria-label': 'search' }}
+        />
+      </Search>
+      <Typography variant='body'>
+        {this.state.results && this.state.results.data.length === 1 ? '1 bookmark' : `${this.state.results.data.length} bookmarks`}
+      </Typography>
+      <List
+        height={400}
+        width={600}>
+        {this.state.results && this.state.results?.data.length === 0 ? <ListItem><Container>No bookmarks</Container></ListItem> :
+        this.state.results.data.map(tweet => <ListItem><Tweet tweet={tweet} response={this.state.results} /></ListItem>)}
+      </List>
+    </Container>;
   }
 }

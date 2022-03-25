@@ -1,0 +1,1 @@
+export const userLookup = (userId, tweets) => tweets.includes.users.find(user => user.id === userId);

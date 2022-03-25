@@ -14,7 +14,6 @@ if (typeof process.env.ENVIRONMENT === 'undefined' || process.env.ENVIRONMENT !=
 
 const cookieParser = require('cookie-parser');
 const Twitter = require('./twitter-oauth');
-const Spotify = require('./spotify-oauth');
 const fetch = require('node-fetch');
 const res = require('express/lib/response');
 
@@ -28,15 +27,6 @@ app.use(express.json());
 app.get('/oauth/:service', async (request, response) => {
   let service = {};
   switch (request.params.service) {
-    case 'spotify':
-      service = {
-        stateKey: 'spotify_state',
-        redirectUriKey: 'spotify_redirect_uri',
-        tokenKey: 'spotify_token',
-        provider: Spotify,
-        callback: process.env.SPOTIFY_REDIRECT_URI,
-      };
-      break;
     case 'twitter':
       service = {
         stateKey: 'twitter_state',
@@ -75,12 +65,6 @@ app.get('/oauth/:service', async (request, response) => {
 app.get('/oauth/:service/refresh', async (request, response) => {
   let service = {};
   switch (request.params.service) {
-    case 'spotify':
-      service = {
-        tokenKey: 'spotify_token',
-        provider: Spotify
-      };
-      break;
     case 'twitter':
       service = {
         tokenKey: 'twitter_token',
@@ -174,20 +158,13 @@ app.post('/request', async (request, response) => {
 app.get('/authorize/:service', async (request, response) => {
   let service;
   switch (request.params.service) {
-    case 'spotify':
+    case 'twitter':
       service = {
-        provider: Spotify,
-        scope: 'playlist-modify-public playlist-modify-private',
-        stateKey: 'spotify_state',
+        provider: Twitter,
+        scope: 'tweet.read users.read bookmark.read bookmark.write offline.access',
+        stateKey: 'twitter_state',
       }
       break;
-      case 'twitter':
-        service = {
-          provider: Twitter,
-          scope: 'tweet.read users.read bookmark.read bookmark.write offline.access',
-          stateKey: 'twitter_state',
-        }
-        break;
     }
   const state = new Date().getTime() * (1 + Math.random());
   response.cookie(service.stateKey, state);

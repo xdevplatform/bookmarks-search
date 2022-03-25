@@ -1,5 +1,5 @@
 {
-  "name": "spotify",
+  "name": "bookmark-search",
   "version": "0.1.0",
   "private": true,
   "main": "server.js",
@@ -28,6 +28,8 @@
     "react-app-rewired": "^2.2.1",
     "react-dom": "^17.0.2",
     "react-scripts": "5.0.0",
+    "react-twitter-widgets": "^1.10.0",
+    "react-window": "^1.8.6",
     "simple-git": "^3.2.6",
     "web-vitals": "^2.1.4",
     "yarn": "^1.22.18"

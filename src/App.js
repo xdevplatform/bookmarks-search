@@ -1,7 +1,7 @@
 import './App.css';
 import React from 'react';
 import Cookies from './cookies'; 
-import { styled, alpha, Button, Container, List, ListItem, Snackbar, Stack, Typography } from '@mui/material';
+import { styled, alpha, Button, Container, Link, List, ListItem, Snackbar, Stack, Typography } from '@mui/material';
 import InputBase from '@mui/material/InputBase';
 import SearchIcon from '@mui/icons-material/Search';
 import Loading from './Loading';
@@ -96,7 +96,7 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 
 
 const hasValidToken = () => {
-  const token = Cookies.get('twitter_token');
+  const token = Cookies.get('token');
   if (!token) {
     return false;
   }
@@ -181,10 +181,19 @@ export default class App extends React.Component {
         alignItems="center"
         spacing={2}>
           <Container maxWidth='sm'>
-            <Typography variant='h5'>Authorize Twitter so can I read your Bookmarks.</Typography>
-            <Typography variant='p'>This app only be able to read your bookmarks. It will never Tweet on your behalf.</Typography>
+            <Stack spacing={2}>
+              <Typography variant='h3'>Bookmark Search</Typography>
+              <Typography variant='p'>Finally! Search your Twitter bookmarks.</Typography>
+              <Typography variant='h5'>Authorize Twitter so can I read your Bookmarks.</Typography>
+              <Typography variant='h5'>This app only be able to read your bookmarks. It will never Tweet on your behalf.</Typography>
+            </Stack>
           </Container>
           <Button variant="contained" href={`${process.env.REACT_APP_BACKEND_URL ?? ''}/authorize/twitter`} service="twitter">Authorize Twitter</Button>
+          <Container maxWidth='sm'>
+            <Typography variant='p'>
+              Made with 💙 by the <Link target='_blank' href="https://twitter.com/TwitterDev">@TwitterDev</Link> team.
+              Check out the <Link target='_blank' href="https://github.com/twitterdev/bookmark-search">Source code on Github</Link> or <Link target='_blank' href="https://glitch.com/edit/#!/remix/bookmarksearch">Remix this app</Link></Typography>
+          </Container>
       </Stack>;
     }
 

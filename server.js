@@ -31,7 +31,7 @@ app.get('/oauth/:service', async (request, response) => {
       service = {
         stateKey: 'twitter_state',
         redirectUriKey: 'twitter_redirect_uri',
-        tokenKey: 'twitter_token',
+        tokenKey: 'token',
         provider: Twitter,
         callback: process.env.TWITTER_REDIRECT_URI,
       };
@@ -49,14 +49,11 @@ app.get('/oauth/:service', async (request, response) => {
 
     try {
       const url = new URL(process.env.APP_URL);
-      url.searchParams.set('service', request.params.service);
-      url.searchParams.set('success', '1')
       response.redirect(url.href);
     } catch (e) {
       console.error(e);
       const url = new URL(process.env.APP_URL);
-      url.searchParams.set('service', request.params.service);
-      url.searchParams.set('success', '0');
+      url.searchParams.set('error', '1');
       response.redirect(url.href);
     }
   }
@@ -67,7 +64,7 @@ app.get('/oauth/:service/refresh', async (request, response) => {
   switch (request.params.service) {
     case 'twitter':
       service = {
-        tokenKey: 'twitter_token',
+        tokenKey: 'token',
         provider: Twitter
       };
       break;
@@ -104,14 +101,14 @@ app.post('/request', async (request, response) => {
     return response.status(400).json({error: 'Invalid URL.'});
   }
 
-  if (!request.cookies.twitter_token) {
-    res.status(400).json({error: 'No access token.'});
+  if (!request.cookies.token) {
+    return response.status(400).json({error: 'No access token.'});
   }
 
   const options = {
     method: request.body.method,
     headers: {
-      'Authorization': `Bearer ${request.cookies.twitter_token.access_token}`,
+      'Authorization': `Bearer ${request.cookies.token.access_token}`,
       'User-agent': 'TwitterOAuthPlayground',
     },
   };
@@ -175,10 +172,10 @@ app.get('/authorize/:service', async (request, response) => {
 });
 
 app.get('/oauth/twitter/revoke', async (request, response) => {
-  if (!request.cookies.twitter_token) {
+  if (!request.cookies.token) {
     response.json({revoked: true});
   } else {
-    const r = await revokeToken(request.cookies.twitter_token.access_token);
+    const r = await revokeToken(request.cookies.token.access_token);
     response.clearCookie('token');
     response.json(r);  
   }

@@ -1,7 +1,7 @@
 import './App.css';
 import React from 'react';
 import Cookies from './cookies'; 
-import { styled, alpha, Button, Container, Link, List, ListItem, Snackbar, Stack, Typography } from '@mui/material';
+import { styled, alpha, Button, Container, Link, List, ListItem, Snackbar, Stack, Typography, Alert } from '@mui/material';
 import InputBase from '@mui/material/InputBase';
 import SearchIcon from '@mui/icons-material/Search';
 import Loading from './Loading';
@@ -206,6 +206,16 @@ export default class App extends React.Component {
     }
 
     return <Container maxWidth='sm'>
+      <Snackbar
+        open>
+        <Alert severity='info' sx={{width: '100%'}}>
+          This app is open source. Check out its code to build your own version!
+          <br/><br/>
+          <Link target='_blank' underline='always' href='https://github.com/twitterdev/bookmarksearch'>Check out the code on Github</Link>
+          <br />
+          <Link target='_blank' underline='always' href='https://t.co/signup'>Sign up for the Twitter API</Link>
+        </Alert>
+      </Snackbar>
       <Snackbar 
         open={this.state.error} 
         message='Cannot read your bookmarks.'

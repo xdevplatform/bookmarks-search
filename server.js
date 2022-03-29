@@ -182,6 +182,6 @@ app.get('/oauth/twitter/revoke', async (request, response) => {
   
 });
 
-const listener = server.listen(process.env.BACKEND_PORT || 5000, async () => {
+const listener = server.listen(process.env.PORT || 3002, async () => {
   console.log(`Your app is listening on port ${listener.address().port}`);
 });

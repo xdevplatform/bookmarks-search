@@ -192,7 +192,7 @@ export default class App extends React.Component {
           <Container maxWidth='sm'>
             <Typography variant='p'>
               Made with 💙 by the <Link target='_blank' href="https://twitter.com/TwitterDev">@TwitterDev</Link> team.
-              Check out the <Link target='_blank' href="https://github.com/twitterdev/bookmark-search">Source code on Github</Link> or <Link target='_blank' href="https://glitch.com/edit/#!/remix/bookmarksearch">Remix this app</Link></Typography>
+              Check out the <Link target='_blank' href="https://github.com/twitterdev/bookmarks-search">Source code on GitHub</Link> or <Link target='_blank' href="https://glitch.com/edit/#!/remix/bookmarksearch">Remix this app</Link></Typography>
           </Container>
       </Stack>;
     }
@@ -211,7 +211,7 @@ export default class App extends React.Component {
         <Alert severity='info' sx={{width: '100%'}}>
           This app is open source. Check out its code to build your own version!
           <br/><br/>
-          <Link target='_blank' underline='always' href='https://github.com/twitterdev/bookmarksearch'>Check out the code on Github</Link>
+          <Link target='_blank' underline='always' href='https://github.com/twitterdev/bookmarks-search'>Check out the code on GitHub</Link>
           <br />
           <Link target='_blank' underline='always' href='https://t.co/signup'>Sign up for the Twitter API</Link>
         </Alert>

@@ -1,12 +1,13 @@
 import './App.css';
 import React from 'react';
 import Cookies from './cookies'; 
-import { styled, alpha, Button, Container, Link, List, ListItem, Snackbar, Stack, Typography, Alert } from '@mui/material';
+import { styled, alpha, Button, Container, Grid, Link, List, ListItem, Snackbar, Stack, Typography, Alert } from '@mui/material';
 import InputBase from '@mui/material/InputBase';
 import SearchIcon from '@mui/icons-material/Search';
 import Loading from './Loading';
 import Tweet from './Tweet';
 import { userLookup } from './utils';
+import FolderList from './FolderList';
 
 const request = async (url, method = 'GET', body = '') => {
   return await fetch('/request', {
@@ -226,26 +227,42 @@ export default class App extends React.Component {
         }>
       </Snackbar>
 
-      <Search>
-        <SearchIconWrapper>
-          <SearchIcon />
-        </SearchIconWrapper>
-        <StyledInputBase
-          ref={this.searchRef}
-          onChange={(e) => this.search(e)}
-          placeholder="Search your bookmarks"
-          inputProps={{ 'aria-label': 'search' }}
-        />
-      </Search>
-      <Typography variant='body'>
-        {this.state.results && this.state.results.data.length === 1 ? '1 bookmark' : `${this.state.results.data.length} bookmarks`}
-      </Typography>
-      <List
-        height={400}
-        width={600}>
-        {this.state.results && this.state.results?.data.length === 0 ? <ListItem><Container>No bookmarks</Container></ListItem> :
-        this.state.results.data.map(tweet => <ListItem><Tweet tweet={tweet} response={this.state.results} /></ListItem>)}
-      </List>
+      <Grid container spacing={2}>
+        <Grid item xs={4}>
+          <Typography variant="overline" display="block" gutterBottom>
+            Smart folders
+          </Typography>
+          <FolderList tweets={this.state.results.data} onFolderSelect={() => {}}>
+
+          </FolderList>
+          <Typography variant="body2" gutterBottom>
+            These folders are automatically created based on the Twitter's ML interpretation of a Tweet.
+          </Typography>
+        </Grid>
+        <Grid item xs={8}>
+          <Search>
+            <SearchIconWrapper>
+              <SearchIcon />
+            </SearchIconWrapper>
+            <StyledInputBase
+              ref={this.searchRef}
+              onChange={(e) => this.search(e)}
+              placeholder="Search your bookmarks"
+              inputProps={{ 'aria-label': 'search' }}
+            />
+          </Search>
+          <Typography variant='body'>
+            {this.state.results && this.state.results.data.length === 1 ? '1 bookmark' : `${this.state.results.data.length} bookmarks`}
+          </Typography>
+          <List
+            height={400}
+            width={600}>
+            {this.state.results && this.state.results?.data.length === 0 ? <ListItem><Container>No bookmarks</Container></ListItem> :
+            this.state.results.data.map(tweet => <ListItem><Tweet tweet={tweet} response={this.state.results} /></ListItem>)}
+          </List>
+        </Grid>
+      </Grid>
+
     </Container>;
   }
 }

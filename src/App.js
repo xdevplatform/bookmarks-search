@@ -1,12 +1,13 @@
 import './App.css';
 import React from 'react';
 import Cookies from './cookies'; 
-import { styled, alpha, Button, Container, Link, List, ListItem, Snackbar, Stack, Typography, Alert } from '@mui/material';
+import { styled, alpha, Button, Container, Grid, Link, List, ListItem, Snackbar, Stack, Typography, Alert } from '@mui/material';
 import InputBase from '@mui/material/InputBase';
 import SearchIcon from '@mui/icons-material/Search';
 import Loading from './Loading';
 import Tweet from './Tweet';
 import { userLookup } from './utils';
+import FolderList from './FolderList';
 
 const request = async (url, method = 'GET', body = '') => {
   return await fetch('/request', {
@@ -110,11 +111,14 @@ const hasValidToken = () => {
 }
 
 export default class App extends React.Component {
+  delay = null;
   state = {
     error: false,
     loading: true,
     tweets: {data: [], includes: [], meta: {}},
     results: {data: [], includes: [], meta: {}},
+    folderLabel: null,
+    folderValues: null,
   };
 
   constructor(props) {
@@ -148,29 +152,51 @@ export default class App extends React.Component {
   }
 
   search(e) {
-    if (!e.target.value) {
-      this.setState({results: this.state.tweets});
-      return;
-    }
-
-    const value = e.target.value.toLowerCase();
-
-    const results = this.state.tweets.data.filter(tweet => {
-      const annotations = tweet.context_annotations?.map(({entity}) => entity.name) ?? [];
-      const user = userLookup(tweet.author_id, this.state.tweets);
-      const result = [
-        tweet.text, 
-        user.name, 
-        user.username,
-        ...annotations
-      ].find(token => token.toLowerCase().match(value));
-      
-      if (result) {
-        return tweet;
+    clearTimeout(this.delay);
+    setTimeout(() => {
+      if (!e.target.value) {
+        this.setState({results: this.state.tweets});
+        return;
       }
-    });
+  
+      const value = e.target.value.toLowerCase();
+  
+      const dataset = this.state.folderValues ? this.getResultsForContexts(this.state.folderValues) : this.state.tweets.data;
+      const results = this.state.tweets.data.filter(tweet => {
+        const annotations = tweet.context_annotations?.map(({entity}) => entity.name) ?? [];
+        const user = userLookup(tweet.author_id, this.state.tweets);
+        const result = [
+          tweet.text, 
+          user.name, 
+          user.username,
+          ...annotations
+        ].find(token => token.toLowerCase().match(value));
+        
+        if (result) {
+          return tweet;
+        }
+      });
+  
+      this.setState({results: {data: results, includes: this.state.tweets.includes, meta: this.state.tweets.meta}});
+    }, 500);
+  }
 
-    this.setState({results: {data: results, includes: this.state.tweets.includes, meta: this.state.tweets.meta}});
+  getResultsForContexts(values) {
+    return this.state.tweets.data
+    .filter(({context_annotations = []}) => {
+      const contexts = context_annotations.map(({domain, entity}) => `${domain.id}.${entity.id}`)
+      return contexts.filter(value => values.includes(value)).length > 0
+    });
+  }
+
+  didSelectFolder(label, values) {
+    this.searchRef.current.querySelector('input').value = '';
+    if (values === null) {
+      this.setState({results: this.state.tweets, folderLabel: null, folderValues: null});
+    } else {
+      const results = this.getResultsForContexts(values);
+      this.setState({results: {data: results, includes: this.state.tweets.includes, meta: this.state.tweets.meta}, folderLabel: label, folderValues: values});  
+    }
   }
 
   render() {
@@ -226,26 +252,40 @@ export default class App extends React.Component {
         }>
       </Snackbar>
 
-      <Search>
-        <SearchIconWrapper>
-          <SearchIcon />
-        </SearchIconWrapper>
-        <StyledInputBase
-          ref={this.searchRef}
-          onChange={(e) => this.search(e)}
-          placeholder="Search your bookmarks"
-          inputProps={{ 'aria-label': 'search' }}
-        />
-      </Search>
-      <Typography variant='body'>
-        {this.state.results && this.state.results.data.length === 1 ? '1 bookmark' : `${this.state.results.data.length} bookmarks`}
-      </Typography>
-      <List
-        height={400}
-        width={600}>
-        {this.state.results && this.state.results?.data.length === 0 ? <ListItem><Container>No bookmarks</Container></ListItem> :
-        this.state.results.data.map(tweet => <ListItem><Tweet tweet={tweet} response={this.state.results} /></ListItem>)}
-      </List>
+      <Grid container spacing={2}>
+        <Grid item xs={4}>
+          <Typography variant="overline" display="block" gutterBottom>
+            Smart folders
+          </Typography>
+          <Typography variant="body2" gutterBottom>
+            These folders are automatically created based on Twitter's <Link target="_blank" href="https://developer.twitter.com/en/docs/twitter-api/annotations/overview">machine learning interpretation of a Tweet</Link>.
+          </Typography>
+          <FolderList tweets={this.state.results.data} onFolderSelect={(label, value) => this.didSelectFolder(label, value)} />
+        </Grid>
+        <Grid item xs={8}>
+          <Search>
+            <SearchIconWrapper>
+              <SearchIcon />
+            </SearchIconWrapper>
+            <StyledInputBase
+              ref={this.searchRef}
+              onChange={(e) => this.search(e)}
+              placeholder={this.state.folderLabel ? `Search ${this.state.folderLabel}` : 'Search all bookmarks'}
+              inputProps={{ 'aria-label': 'search' }}
+            />
+          </Search>
+          <Typography variant='body'>
+            {this.state.results && this.state.results.data.length === 1 ? '1 bookmark' : `${this.state.results.data.length} bookmarks`}
+          </Typography>
+          <List
+            height={400}
+            width={600}>
+            {this.state.results && this.state.results?.data.length === 0 ? <ListItem><Container>No bookmarks</Container></ListItem> :
+            this.state.results.data.map(tweet => <ListItem><Tweet tweet={tweet} response={this.state.results} /></ListItem>)}
+          </List>
+        </Grid>
+      </Grid>
+
     </Container>;
   }
 }

@@ -174,6 +174,20 @@ export default class App extends React.Component {
     this.setState({results: {data: results, includes: this.state.tweets.includes, meta: this.state.tweets.meta}});
   }
 
+  didSelectFolder(label, values) {
+    if (values === null) {
+      return this.setState({results: this.state.tweets});
+    }
+
+    const results = this.state.tweets.data
+      .filter(({context_annotations = []}) => {
+        const contexts = context_annotations.map(({domain, entity}) => `${domain.id}.${entity.id}`)
+        return contexts.filter(value => values.includes(value)).length > 0
+      });
+
+    this.setState({results: {data: results, includes: this.state.tweets.includes, meta: this.state.tweets.meta}});
+  }
+
   render() {
     if (!hasValidToken()) {
       return <Stack
@@ -232,12 +246,10 @@ export default class App extends React.Component {
           <Typography variant="overline" display="block" gutterBottom>
             Smart folders
           </Typography>
-          <FolderList tweets={this.state.results.data} onFolderSelect={() => {}}>
-
-          </FolderList>
           <Typography variant="body2" gutterBottom>
-            These folders are automatically created based on the Twitter's ML interpretation of a Tweet.
+            These folders are automatically created based on Twitter's <Link target="_blank" href="https://developer.twitter.com/en/docs/twitter-api/annotations/overview">machine learning interpretation of a Tweet</Link>.
           </Typography>
+          <FolderList tweets={this.state.results.data} onFolderSelect={(label, value) => this.didSelectFolder(label, value)} />
         </Grid>
         <Grid item xs={8}>
           <Search>

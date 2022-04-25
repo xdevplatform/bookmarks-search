@@ -111,11 +111,14 @@ const hasValidToken = () => {
 }
 
 export default class App extends React.Component {
+  delay = null;
   state = {
     error: false,
     loading: true,
     tweets: {data: [], includes: [], meta: {}},
     results: {data: [], includes: [], meta: {}},
+    folderLabel: null,
+    folderValues: null,
   };
 
   constructor(props) {
@@ -149,43 +152,51 @@ export default class App extends React.Component {
   }
 
   search(e) {
-    if (!e.target.value) {
-      this.setState({results: this.state.tweets});
-      return;
-    }
-
-    const value = e.target.value.toLowerCase();
-
-    const results = this.state.tweets.data.filter(tweet => {
-      const annotations = tweet.context_annotations?.map(({entity}) => entity.name) ?? [];
-      const user = userLookup(tweet.author_id, this.state.tweets);
-      const result = [
-        tweet.text, 
-        user.name, 
-        user.username,
-        ...annotations
-      ].find(token => token.toLowerCase().match(value));
-      
-      if (result) {
-        return tweet;
+    clearTimeout(this.delay);
+    setTimeout(() => {
+      if (!e.target.value) {
+        this.setState({results: this.state.tweets});
+        return;
       }
-    });
+  
+      const value = e.target.value.toLowerCase();
+  
+      const dataset = this.state.folderValues ? this.getResultsForContexts(this.state.folderValues) : this.state.tweets.data;
+      const results = this.state.tweets.data.filter(tweet => {
+        const annotations = tweet.context_annotations?.map(({entity}) => entity.name) ?? [];
+        const user = userLookup(tweet.author_id, this.state.tweets);
+        const result = [
+          tweet.text, 
+          user.name, 
+          user.username,
+          ...annotations
+        ].find(token => token.toLowerCase().match(value));
+        
+        if (result) {
+          return tweet;
+        }
+      });
+  
+      this.setState({results: {data: results, includes: this.state.tweets.includes, meta: this.state.tweets.meta}});
+    }, 500);
+  }
 
-    this.setState({results: {data: results, includes: this.state.tweets.includes, meta: this.state.tweets.meta}});
+  getResultsForContexts(values) {
+    return this.state.tweets.data
+    .filter(({context_annotations = []}) => {
+      const contexts = context_annotations.map(({domain, entity}) => `${domain.id}.${entity.id}`)
+      return contexts.filter(value => values.includes(value)).length > 0
+    });
   }
 
   didSelectFolder(label, values) {
+    this.searchRef.current.querySelector('input').value = '';
     if (values === null) {
-      return this.setState({results: this.state.tweets});
+      this.setState({results: this.state.tweets, folderLabel: null, folderValues: null});
+    } else {
+      const results = this.getResultsForContexts(values);
+      this.setState({results: {data: results, includes: this.state.tweets.includes, meta: this.state.tweets.meta}, folderLabel: label, folderValues: values});  
     }
-
-    const results = this.state.tweets.data
-      .filter(({context_annotations = []}) => {
-        const contexts = context_annotations.map(({domain, entity}) => `${domain.id}.${entity.id}`)
-        return contexts.filter(value => values.includes(value)).length > 0
-      });
-
-    this.setState({results: {data: results, includes: this.state.tweets.includes, meta: this.state.tweets.meta}});
   }
 
   render() {
@@ -259,7 +270,7 @@ export default class App extends React.Component {
             <StyledInputBase
               ref={this.searchRef}
               onChange={(e) => this.search(e)}
-              placeholder="Search your bookmarks"
+              placeholder={this.state.folderLabel ? `Search ${this.state.folderLabel}` : 'Search all bookmarks'}
               inputProps={{ 'aria-label': 'search' }}
             />
           </Search>

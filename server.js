@@ -109,7 +109,7 @@ app.post('/request', async (request, response) => {
     method: request.body.method,
     headers: {
       'Authorization': `Bearer ${request.cookies.token.access_token}`,
-      'User-agent': 'TwitterOAuthPlayground',
+      'User-agent': 'TwitterDevBookmarkSearch',
     },
   };
 
@@ -158,7 +158,7 @@ app.get('/authorize/:service', async (request, response) => {
     case 'twitter':
       service = {
         provider: Twitter,
-        scope: 'tweet.read users.read bookmark.read bookmark.write offline.access',
+        scope: 'tweet.read users.read bookmark.read offline.access',
         stateKey: 'twitter_state',
       }
       break;

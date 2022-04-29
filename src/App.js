@@ -211,7 +211,7 @@ export default class App extends React.Component {
               <Typography variant='h3'>Bookmark Search</Typography>
               <Typography variant='p'>Finally! Search your Twitter bookmarks.</Typography>
               <Typography variant='h5'>Authorize Twitter so can I read your Bookmarks.</Typography>
-              <Typography variant='h5'>This app only be able to read your bookmarks. It will never Tweet on your behalf.</Typography>
+              <Typography variant='h5'>This app will only be able to read your bookmarks. It will never Tweet on your behalf.</Typography>
             </Stack>
           </Container>
           <Button variant="contained" href={`${process.env.REACT_APP_BACKEND_URL ?? ''}/authorize/twitter`} service="twitter">Authorize Twitter</Button>

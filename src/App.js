@@ -35,7 +35,7 @@ const paginatedRequest = async (url, method = 'GET', body = '') => {
     }
 
     if (out.meta.next_token) {
-      url.searchParams.set('paginationToken', out.response?.meta.next_token);
+      url.searchParams.set('pagination_token', out.meta.next_token);
     }
 
     const response = await request(url, method, body);

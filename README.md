@@ -24,7 +24,7 @@ This app uses the Bookmarks lookup endpoint to get your bookmarks. It then perfo
 
 1. Go to the [Twitter Developer Portal](https://developer.twitter.com/apps) and select the cog icon next to app you wish to use.
 1. Click Edit under User authentication settings.
-1. Enable OAuth 2.0. Select Single page App as your client type.
+1. Enable OAuth 2.0. Select Native App as your client type.
 1. Configure your OAuth callback, making sure it ends with `/oauth/twitter`. For example, if you're hosting the app from your local environment, your callback will be `https://127.0.0.1:3002/oauth/twitter`.
 1. Make a note of your Twitter Client ID.
 
